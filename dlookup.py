@@ -122,19 +122,22 @@ def print_progress():
         print(f"Progress: {completed_tasks}/{total_tasks} tasks completed ({(completed_tasks / total_tasks) * 100:.2f}%).")
 
 
-def capture_screenshots(active_domains, screenshot_dir):
+def capture_screenshots(txt_file, screenshot_dir):
     """
-    Run the EyeWitness tool to capture screenshots of active domains.
+    Run the EyeWitness tool to capture screenshots of active domains listed in the txt_file.
     """
-    print("\nStarting screenshot capture...")
-    total_urls = len(active_domains)
-    for idx, domain in enumerate(active_domains, start=1):
-        print(f"Capturing screenshot {idx}/{total_urls} for: {domain}")
-        command = f"eyewitness --single {domain} --web --output {screenshot_dir}"
-        try:
-            run(command, shell=True, check=True)
-        except CalledProcessError as e:
-            print(f"Error capturing screenshot for {domain}: {e}")
+    print("\nStarting screenshot capture using EyeWitness...")
+    # Ensure the output directory exists
+    if not os.path.exists(screenshot_dir):
+        os.makedirs(screenshot_dir)
+
+    # EyeWitness command with -f for file input
+    command = f"eyewitness -f {txt_file} -d {screenshot_dir}"
+    try:
+        run(command, shell=True, check=True)
+        print(f"Screenshots captured for active URLs listed in: {txt_file}")
+    except CalledProcessError as e:
+        print(f"Error capturing screenshots: {e}")
 
 
 def process_domains(input_file, txt_output, result_output, screenshot_dir):
@@ -164,13 +167,16 @@ def process_domains(input_file, txt_output, result_output, screenshot_dir):
                 active_domains.append(f"{result[6]}://{result[1]}")
 
     result_wb.save(result_output)
+
+    # Write active domains to the txt file
     with open(txt_output, 'w') as txt_file:
-        txt_file.write("\n".join(active_domains))
+        for domain in active_domains:
+            txt_file.write(f"{domain}\n")
     print(f"Active domains saved to {txt_output}")
 
     # Capture screenshots
     if active_domains:
-        capture_screenshots(active_domains, screenshot_dir)
+        capture_screenshots(txt_output, screenshot_dir)
 
 
 if __name__ == "__main__":
