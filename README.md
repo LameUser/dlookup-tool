@@ -44,12 +44,17 @@ git clone https://github.com/your-username/dlookup-tool.git
 cd dlookup-tool
 ```
 
-- Place your input Excel file (e.g., `cryptodomain.xlsx`) in the `dlookup-tool` directory. Modify the script paths if your input/output locations differ.
-
 - Run the script:
+    - The script will prompt you to enter the folder path where the input Excel file (`cryptodomain.xlsx`) is located.
+    - All output files (results and screenshots) will be saved in the same folder.
+  Command: - 
 ```bash
 python3 dlookup.py
 ```
+
+-Input file:
+  - Ensure the inpute file `cyptodomain.xlsx` is present in the folder you specify.
+
 
 ## Output
 
@@ -59,22 +64,22 @@ python3 dlookup.py
 
 ## Configuration
 
-- Input File Path: Update the `input_path` variable in `dlookup.py` to match the location of your input file.
-   - Example:
+- Input File Path: The script dynamically asks for the folder where the input file (`cryptodomain.xlsx`) is located.
+
+- Output File Path: The script automatically saves:
+    - Results (`domain_results.xlsx` and `urls.txt`) in the same folder as the input file.
+    - Screenshots in a `screens/` directory with the same folder.
+
+## Example workflow:
+
+- Promt:
+    -
    ```bash
-   input_path = "/path/to/your/cryptodomain.xlsx"
-   ```
-- Output File Path: Update the `result_output_path` and `txt_output_path` variables to set the location for the output files.
-   - Example:
-   ```bash
-   result_output_path = "/path/to/save/domain_results.xlsx"
-    txt_output_path = "/path/to/save/urls.txt"
-   ```
-- Screenshot Directory: Update the `screenshot_dir` variable to set the directory for screenshots.
-   - Example:
-   ```bash
-   screenshot_dir = "/path/to/save/screens/"
+      Enter the full path of the folder where the domain Excel sheet is located: /home/user/domains
    ```
 
-
-
+- Output:
+  - Results will be saved in `/home/user/domains`:
+      - `domain_results.xlsx`
+      - `urls.txt`
+      - `screens/` (directory containing screenshots of active domains) 
