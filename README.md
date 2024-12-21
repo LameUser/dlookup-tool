@@ -54,7 +54,7 @@ python3 dlookup.py
 
 - Input file:
   - Ensure the inpute file `cyptodomain.xlsx` is present in the folder you specify.
-  - The `cyptodomain.xlsx` should have url column heading as "URLS".
+  - The file `cyptodomain.xlsx` should have heading of url column as "URLS".
 
 
 ## Output
