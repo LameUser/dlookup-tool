@@ -38,16 +38,45 @@ sudo apt install eyewitness
 
 ## Usage
 
-Clone the repository:
+1. Clone the repository:
 ```bash
 git clone https://github.com/your-username/dlookup-tool.git
 cd dlookup-tool
 ```
 
-Place your input Excel file (e.g., `cryptodomain.xlsx`) in the `dlookup-tool` directory. Modify the script paths if your input/output locations differ.
+2. Place your input Excel file (e.g., `cryptodomain.xlsx`) in the `dlookup-tool` directory. Modify the script paths if your input/output locations differ.
 
-Run the script:
+3. Run the script:
 ```bash
 python3 dlookup.py
 ```
+
+### Output
+
+- Excel File: The tool generates an Excel file (`domain_results.xlsx) with detailed informations:
+    - URL, Domain, WHOIS Result, NSLOOKUP Result, Server IP, Domain Active, Successful Scheme, Country, City, ISP, ASN.
+- Screenshots: Captured screenshots of active domains are saved in the `screens/` directory.
+
+### Configuration
+
+1. Input File Path: Update the `input_path` variable in `dlookup.py` to match the location of your input file.
+   Example:
+   ```bash
+   input_path = "/path/to/your/cryptodomain.xlsx"
+   ```
+2. Output File Path: Update the `result_output_path` and `txt_output_path` variables to set the location for the output files.
+   Example:
+   ```bash
+   result_output_path = "/path/to/save/domain_results.xlsx"
+    txt_output_path = "/path/to/save/urls.txt"
+   ```
+3. Screenshot Directory: Update the `screenshot_dir` variable to set the directory for screenshots.
+   Example:
+   ```bash
+   screenshot_dir = "/path/to/save/screens/"
+   ```
+
+
+
+
 
