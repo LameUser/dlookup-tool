@@ -52,7 +52,7 @@ cd dlookup-tool
 python3 dlookup.py
 ```
 
--Input file:
+- Input file:
   - Ensure the inpute file `cyptodomain.xlsx` is present in the folder you specify.
 
 
