@@ -38,15 +38,15 @@ sudo apt install eyewitness
 
 ## Usage
 
-1. Clone the repository:
+- Clone the repository:
 ```bash
 git clone https://github.com/your-username/dlookup-tool.git
 cd dlookup-tool
 ```
 
-2. Place your input Excel file (e.g., `cryptodomain.xlsx`) in the `dlookup-tool` directory. Modify the script paths if your input/output locations differ.
+- Place your input Excel file (e.g., `cryptodomain.xlsx`) in the `dlookup-tool` directory. Modify the script paths if your input/output locations differ.
 
-3. Run the script:
+- Run the script:
 ```bash
 python3 dlookup.py
 ```
@@ -59,24 +59,22 @@ python3 dlookup.py
 
 ### Configuration
 
-1. Input File Path: Update the `input_path` variable in `dlookup.py` to match the location of your input file.
+- Input File Path: Update the `input_path` variable in `dlookup.py` to match the location of your input file.
    Example:
    ```bash
    input_path = "/path/to/your/cryptodomain.xlsx"
    ```
-2. Output File Path: Update the `result_output_path` and `txt_output_path` variables to set the location for the output files.
+- Output File Path: Update the `result_output_path` and `txt_output_path` variables to set the location for the output files.
    Example:
    ```bash
    result_output_path = "/path/to/save/domain_results.xlsx"
     txt_output_path = "/path/to/save/urls.txt"
    ```
-3. Screenshot Directory: Update the `screenshot_dir` variable to set the directory for screenshots.
+- Screenshot Directory: Update the `screenshot_dir` variable to set the directory for screenshots.
    Example:
    ```bash
    screenshot_dir = "/path/to/save/screens/"
    ```
-
-
 
 
 
