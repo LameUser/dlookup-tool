@@ -1,4 +1,5 @@
 import os
+import time
 import concurrent.futures
 import openpyxl
 from tldextract import extract
@@ -10,6 +11,8 @@ from termcolor import colored
 
 completed_tasks = 0  # Counter to track completed tasks
 total_tasks = 0  # Total number of domains to process
+screenshot_tasks = 0  # Counter for completed screenshots
+total_screenshots = 0  # Total number of screenshots to take
 
 
 def display_banner():
@@ -118,23 +121,42 @@ def print_progress():
     """
     global completed_tasks, total_tasks
     while completed_tasks < total_tasks:
-        input("\nPress Enter to see progress... ")
+        input("\nPress Enter to see domain processing progress... ")
         print(f"Progress: {completed_tasks}/{total_tasks} tasks completed ({(completed_tasks / total_tasks) * 100:.2f}%).")
+
+
+def print_screenshot_progress():
+    """
+    Continuously print progress for screenshots when the user presses Enter.
+    """
+    global screenshot_tasks, total_screenshots
+    while screenshot_tasks < total_screenshots:
+        input("\nPress Enter to see screenshot progress... ")
+        print(f"Screenshot Progress: {screenshot_tasks}/{total_screenshots} screenshots captured "
+              f"({(screenshot_tasks / total_screenshots) * 100:.2f}%).")
 
 
 def capture_screenshots(txt_file, screenshot_dir):
     """
     Run the EyeWitness tool to capture screenshots of active domains listed in the txt_file.
     """
+    global screenshot_tasks, total_screenshots
+
     print("\nStarting screenshot capture using EyeWitness...")
     # Ensure the output directory exists
     if not os.path.exists(screenshot_dir):
         os.makedirs(screenshot_dir)
 
+    total_screenshots = len(open(txt_file).readlines())
+
+    progress_thread = threading.Thread(target=print_screenshot_progress, daemon=True)
+    progress_thread.start()
+
     # EyeWitness command with -f for file input
     command = f"eyewitness -f {txt_file} -d {screenshot_dir}"
     try:
         run(command, shell=True, check=True)
+        screenshot_tasks = total_screenshots
         print(f"Screenshots captured for active URLs listed in: {txt_file}")
     except CalledProcessError as e:
         print(f"Error capturing screenshots: {e}")
@@ -174,6 +196,9 @@ def process_domains(input_file, txt_output, result_output, screenshot_dir):
             txt_file.write(f"{domain}\n")
     print(f"Active domains saved to {txt_output}")
 
+    # Wait before starting screenshot process
+    time.sleep(3)
+
     # Capture screenshots
     if active_domains:
         capture_screenshots(txt_output, screenshot_dir)
@@ -182,15 +207,31 @@ def process_domains(input_file, txt_output, result_output, screenshot_dir):
 if __name__ == "__main__":
     display_banner()
 
-    base_path = r"/media/sf_Kalisharing/"
+    # Ask the user for the folder containing the input Excel file
+    base_path = input("\nEnter the full path of the folder where the domain Excel sheet is located: ").strip()
+
+    # Ensure the path exists
+    if not os.path.exists(base_path):
+        print(f"\nThe specified folder does not exist: {base_path}")
+        exit(1)
+
+    # Define file paths dynamically based on the input folder
     input_path = os.path.join(base_path, "cryptodomain.xlsx")
     txt_output_path = os.path.join(base_path, "urls.txt")
     result_output_path = os.path.join(base_path, "domain_results.xlsx")
     screenshot_dir = os.path.join(base_path, "screens/")
 
+    # Check if the input file exists
+    if not os.path.exists(input_path):
+        print(f"Input file 'cryptodomain.xlsx' not found in the specified folder: {base_path}")
+        exit(1)
+
+    # Inform the user where the outputs will be saved
+    print(f"Results will be saved in the same folder: {base_path}")
+
+    # Create the output folder for screenshots if it doesn't exist
     if not os.path.exists(screenshot_dir):
         os.makedirs(screenshot_dir)
-    if os.path.exists(input_path):
-        process_domains(input_path, txt_output_path, result_output_path, screenshot_dir)
-    else:
-        print(f"Input file not found: {input_path}")
+
+    # Process the domains
+    process_domains(input_path, txt_output_path, result_output_path, screenshot_dir)
