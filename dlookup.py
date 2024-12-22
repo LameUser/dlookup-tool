@@ -192,7 +192,7 @@ if __name__ == "__main__":
     display_banner()  # Display the banner
 
     # Paths to files and directories
-    base_path = input("Enter the full path to the folder containing the Excel file: ").strip()
+    base_path = input("\nEnter the full path to the folder containing the Excel file: ").strip()
     input_file = os.path.join(base_path, "cryptodomain.xlsx")
     txt_output = os.path.join(base_path, "urls.txt")
     result_output = os.path.join(base_path, "domain_results.xlsx")
