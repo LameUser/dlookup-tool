@@ -1,57 +1,43 @@
 import os
+import shutil
 import time
 import concurrent.futures
 import openpyxl
+from subprocess import run, PIPE, CalledProcessError
 from tldextract import extract
+from tqdm import tqdm
 import requests
-from subprocess import run, CalledProcessError, PIPE
-import threading
 import pyfiglet
 from termcolor import colored
 
-completed_tasks = 0  # Counter to track completed tasks
-total_tasks = 0  # Total number of domains to process
-screenshot_tasks = 0  # Counter for completed screenshots
-total_screenshots = 0  # Total number of screenshots to take
-
 
 def display_banner():
-    """
-    Display the banner for the tool with the tool name and credits.
-    """
-    banner = pyfiglet.figlet_format("dlookup", font="slant")  # Use slant font for readability
-    banner = colored(banner, "cyan")
-    credits = colored("https://github.com/LameUser", "yellow")
-    print(banner)
-    print(credits)
+    """Display the tool banner with the name and GitHub link."""
+    banner = pyfiglet.figlet_format("dlookup", font="slant")  # Create banner text
+    print(colored(banner, "cyan"))  # Print banner in cyan
+    print(colored("https://github.com/LameUser", "yellow"))  # Print GitHub link in yellow
 
 
 def clean_domain(domain):
+    """Extract main domain using tldextract."""
     extracted = extract(domain)
     return f"{extracted.domain}.{extracted.suffix}" if extracted.domain and extracted.suffix else None
 
 
 def run_command(command):
+    """Run a shell command and handle errors."""
     try:
         result = run(command, shell=True, text=True, stdout=PIPE, stderr=PIPE, timeout=10)
-        return result.stdout.strip() if result.returncode == 0 else f"Error: {result.stderr.strip()}"
+        if result.returncode == 0:
+            return result.stdout.strip()
+        else:
+            return f"Command failed: {result.stderr.strip()}"
     except Exception as e:
-        return f"Error: {e}"
-
-
-def is_domain_active(domain):
-    session = requests.Session()
-    for scheme in ["http", "https"]:
-        try:
-            response = session.get(f"{scheme}://{domain}", timeout=5)
-            if response.status_code == 200:
-                return scheme
-        except requests.exceptions.RequestException:
-            continue
-    return None
+        return f"Error running command '{command}': {e}"
 
 
 def extract_server_ip(nslookup_result):
+    """Extract the server IP from NSLOOKUP results."""
     lines = nslookup_result.splitlines()
     ip_addresses = [line.split(":")[-1].strip() for line in lines if "Address:" in line and not line.startswith("Server:")]
     return ip_addresses[-1] if ip_addresses else "N/A"
@@ -59,47 +45,57 @@ def extract_server_ip(nslookup_result):
 
 def get_geolocation(ip):
     """
-    Retrieves geolocation data for a given IP address using ip-api.com.
+    Fetch geolocation data for a given IP address using ip-api.com.
+    Includes rate limiting and retries for API usage.
     """
+    if ip == "N/A" or not ip:  # Skip if IP is invalid
+        return {'Country': 'N/A', 'City': 'N/A', 'ISP': 'N/A', 'ASN': 'N/A'}
+
     url = f"http://ip-api.com/json/{ip}"
-    try:
-        response = requests.get(url, timeout=5)
-        data = response.json()
-        if data['status'] == 'success':
-            as_data = data.get('as', 'N/A')
-            return {
-                'Country': data.get('country', 'N/A'),
-                'City': data.get('city', 'N/A'),
-                'ISP': data.get('isp', 'N/A'),
-                'ASN': as_data.split()[0] if as_data != 'N/A' else 'N/A',  # Extract ASN from AS field
-            }
-    except Exception as e:
-        pass
+    retries = 3
+    for attempt in range(retries):
+        try:
+            response = requests.get(url, timeout=5)
+            if response.status_code == 200:
+                data = response.json()
+                if data.get('status') == 'success':
+                    return {
+                        'Country': data.get('country', 'N/A'),
+                        'City': data.get('city', 'N/A'),
+                        'ISP': data.get('isp', 'N/A'),
+                        'ASN': data.get('as', 'N/A').split()[0]  # Extract ASN
+                    }
+                else:
+                    print(f"Geolocation failed for IP {ip}: {data.get('message', 'Unknown error')}")
+            else:
+                print(f"Error: Received status code {response.status_code} from IP-API for IP {ip}")
+        except Exception as e:
+            print(f"Error fetching geolocation for IP {ip} (Attempt {attempt + 1}): {e}")
+        time.sleep(2)  # Add a delay between retries
     return {'Country': 'N/A', 'City': 'N/A', 'ISP': 'N/A', 'ASN': 'N/A'}
 
 
 def process_domain(domain):
-    global completed_tasks
+    """Process a single domain."""
     main_domain = clean_domain(domain)
     if not main_domain:
-        completed_tasks += 1
-        return domain, None, "Invalid Domain", "N/A", "N/A", "No", None, None, None, None, None
+        return domain, None, "Invalid Domain", "N/A", "N/A", "No", None, "N/A", "N/A", "N/A", "N/A"
 
+    # WHOIS command
     whois_result = run_command(f"whois {main_domain}")
+
+    # NSLOOKUP command
     nslookup_result = run_command(f"nslookup {main_domain}")
+
+    # Extract Server IP from NSLOOKUP result
     server_ip = extract_server_ip(nslookup_result)
-    active_scheme = is_domain_active(main_domain)
-    domain_active = "Yes" if active_scheme else "No"
 
-    # Get geolocation data for the server IP
-    geo_data = get_geolocation(server_ip) if server_ip != "N/A" else {
-        'Country': 'N/A',
-        'City': 'N/A',
-        'ISP': 'N/A',
-        'ASN': 'N/A'
-    }
+    # Check domain activity (using IP as an indicator)
+    domain_active = "Yes" if server_ip != "N/A" else "No"
 
-    completed_tasks += 1
+    # Geolocation lookup
+    geo_data = get_geolocation(server_ip)
+
     return (
         domain,
         main_domain,
@@ -107,63 +103,50 @@ def process_domain(domain):
         nslookup_result,
         server_ip,
         domain_active,
-        active_scheme,
+        None,  # Successful Scheme (HTTP/HTTPS, if applicable)
         geo_data['Country'],
         geo_data['City'],
         geo_data['ISP'],
-        geo_data['ASN'],
+        geo_data['ASN']
     )
-
-
-def print_progress():
-    """
-    Continuously print progress when the user presses Enter.
-    """
-    global completed_tasks, total_tasks
-    while completed_tasks < total_tasks:
-        input("\nPress Enter to see domain processing progress... ")
-        print(f"Progress: {completed_tasks}/{total_tasks} tasks completed ({(completed_tasks / total_tasks) * 100:.2f}%).")
-
-
-def print_screenshot_progress():
-    """
-    Continuously print progress for screenshots when the user presses Enter.
-    """
-    global screenshot_tasks, total_screenshots
-    while screenshot_tasks < total_screenshots:
-        input("\nPress Enter to see screenshot progress... ")
-        print(f"Screenshot Progress: {screenshot_tasks}/{total_screenshots} screenshots captured "
-              f"({(screenshot_tasks / total_screenshots) * 100:.2f}%).")
 
 
 def capture_screenshots(txt_file, screenshot_dir):
     """
-    Run the EyeWitness tool to capture screenshots of active domains listed in the txt_file.
+    Run EyeWitness to capture screenshots with extended timeout and retries.
     """
-    global screenshot_tasks, total_screenshots
+    if os.path.exists(screenshot_dir):
+        user_choice = input(f"Output directory '{screenshot_dir}' already exists. Do you want to delete it and continue? [y/n]: ").strip().lower()
+        if user_choice == "y":
+            shutil.rmtree(screenshot_dir)
+        else:
+            print("Aborting screenshot capture.")
+            return
 
-    print("\nStarting screenshot capture using EyeWitness...")
-    # Ensure the output directory exists
-    if not os.path.exists(screenshot_dir):
-        os.makedirs(screenshot_dir)
+    os.makedirs(screenshot_dir)
 
-    total_screenshots = len(open(txt_file).readlines())
+    with open(txt_file, 'r') as file:
+        urls = file.readlines()
 
-    progress_thread = threading.Thread(target=print_screenshot_progress, daemon=True)
-    progress_thread.start()
-
-    # EyeWitness command with -f for file input
-    command = f"eyewitness -f {txt_file} -d {screenshot_dir}"
-    try:
-        run(command, shell=True, check=True)
-        screenshot_tasks = total_screenshots
-        print(f"Screenshots captured for active URLs listed in: {txt_file}")
-    except CalledProcessError as e:
-        print(f"Error capturing screenshots: {e}")
+    # Progress bar for screenshot capturing
+    with tqdm(total=len(urls), desc="Capturing Screenshots", unit="url") as progress_bar:
+        for url in urls:
+            retries = 3
+            for attempt in range(retries):
+                command = f"eyewitness -f {txt_file} -d {screenshot_dir} --timeout 60"
+                try:
+                    run(command, shell=True, check=True)
+                    progress_bar.update(1)
+                    break
+                except CalledProcessError as e:
+                    print(f"Screenshot attempt {attempt + 1} failed for {url.strip()}: {e}")
+                    time.sleep(2)  # Wait before retrying
+            else:
+                print(f"Failed to capture screenshot for {url.strip()} after {retries} attempts.")
 
 
 def process_domains(input_file, txt_output, result_output, screenshot_dir):
-    global total_tasks
+    """Process all domains and save results to files."""
     wb = openpyxl.load_workbook(input_file)
     sheet = wb.active
     result_wb = openpyxl.Workbook()
@@ -174,64 +157,49 @@ def process_domains(input_file, txt_output, result_output, screenshot_dir):
     ])
 
     domains = [row[0].value for row in sheet.iter_rows(min_row=2, max_row=sheet.max_row, min_col=1, max_col=1) if row[0].value]
-    total_tasks = len(domains)
+
+    if not domains:
+        print("No domains found in the input file.")
+        return
+
     active_domains = []
 
-    progress_thread = threading.Thread(target=print_progress, daemon=True)
-    progress_thread.start()
+    # Progress bar for domain processing
+    with tqdm(total=len(domains), desc="Processing Domains", unit="domain") as progress_bar:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+            futures = {executor.submit(process_domain, domain): domain for domain in domains}
+            for future in concurrent.futures.as_completed(futures):
+                result = future.result()
+                result_sheet.append(result[:11])
+                if result[5] == "Yes":
+                    active_domains.append(f"http://{result[1]}")
+                progress_bar.update(1)
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-        futures = {executor.submit(process_domain, domain): domain for domain in domains}
-        for future in concurrent.futures.as_completed(futures):
-            result = future.result()
-            result_sheet.append(result[:11])
-            if result[5] == "Yes":
-                active_domains.append(f"{result[6]}://{result[1]}")
-
+    # Save results to Excel
     result_wb.save(result_output)
+    print(f"Results saved to Excel file: {result_output}")
 
-    # Write active domains to the txt file
+    # Write active domains to a text file
     with open(txt_output, 'w') as txt_file:
-        for domain in active_domains:
-            txt_file.write(f"{domain}\n")
-    print(f"Active domains saved to {txt_output}")
+        txt_file.writelines([f"{domain}\n" for domain in active_domains])
+    print(f"Active domains saved to text file: {txt_output}")
 
-    # Wait before starting screenshot process
-    time.sleep(3)
-
-    # Capture screenshots
     if active_domains:
         capture_screenshots(txt_output, screenshot_dir)
 
 
 if __name__ == "__main__":
-    display_banner()
+    display_banner()  # Display the banner
 
-    # Ask the user for the folder containing the input Excel file
-    base_path = input("\nEnter the full path of the folder where the domain Excel sheet is located: ").strip()
-
-    # Ensure the path exists
-    if not os.path.exists(base_path):
-        print(f"\nThe specified folder does not exist: {base_path}")
-        exit(1)
-
-    # Define file paths dynamically based on the input folder
-    input_path = os.path.join(base_path, "cryptodomain.xlsx")
-    txt_output_path = os.path.join(base_path, "urls.txt")
-    result_output_path = os.path.join(base_path, "domain_results.xlsx")
+    # Paths to files and directories
+    base_path = input("Enter the full path to the folder containing the Excel file: ").strip()
+    input_file = os.path.join(base_path, "cryptodomain.xlsx")
+    txt_output = os.path.join(base_path, "urls.txt")
+    result_output = os.path.join(base_path, "domain_results.xlsx")
     screenshot_dir = os.path.join(base_path, "screens/")
 
-    # Check if the input file exists
-    if not os.path.exists(input_path):
-        print(f"Input file 'cryptodomain.xlsx' not found in the specified folder: {base_path}")
-        exit(1)
-
-    # Inform the user where the outputs will be saved
-    print(f"Results will be saved in the same folder: {base_path}")
-
-    # Create the output folder for screenshots if it doesn't exist
-    if not os.path.exists(screenshot_dir):
-        os.makedirs(screenshot_dir)
-
-    # Process the domains
-    process_domains(input_path, txt_output_path, result_output_path, screenshot_dir)
+    # Check if input file exists
+    if not os.path.exists(input_file):
+        print(f"Input file not found: {input_file}")
+    else:
+        process_domains(input_file, txt_output, result_output, screenshot_dir)
