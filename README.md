@@ -59,8 +59,8 @@ python3 dlookup.py
 
 ## Output
 
-- Excel File: The tool generates an Excel file (`domain_results.xlsx) with detailed informations:
-    - URL, Domain, WHOIS Result, NSLOOKUP Result, Server IP, Domain Active, Successful Scheme, Country, City, ISP, ASN.
+- Excel File: The tool generates an Excel file (`domain_results.xlsx`) with detailed informations:
+    - `URL, Domain, WHOIS Result, NSLOOKUP Result, Server IP, Domain Active, Successful Scheme, Country, City, ISP, ASN.`
 - Screenshots: Captured screenshots of active domains are saved in the `screens/` directory.
 
 ## Configuration
