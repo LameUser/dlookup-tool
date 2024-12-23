@@ -149,7 +149,7 @@ def capture_screenshots(txt_file, screenshot_dir):
     for url in urls:
         retries = 3
         for attempt in range(retries):
-            command = f"eyewitness -f {txt_file} -d {screenshot_dir} --timeout 60"
+            command = f"eyewitness -f {txt_file} -d {screenshot_dir}"
             try:
                 run(command, shell=True, check=True)
                 screenshot_tasks += 1
