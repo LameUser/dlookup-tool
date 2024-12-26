@@ -1,86 +1,104 @@
 # dlookup Tool
 
-`dlookup` is a Python-based tool designed to analyze domains and IPs, providing WHOIS, NSLOOKUP, geolocation data, and domain activity status. It also captures screenshots of active domains using EyeWitness.
+`dlookup` is a Python-based tool designed to analyze domains and IPs, providing WHOIS, NSLOOKUP, geolocation data, and domain activity status. It outputs the results in an Excel file, making it a powerful utility for network analysts, security researchers, and developers.
 
 ## Features
-- Extracts WHOIS and NSLOOKUP data for domains.
-- Checks if a domain is active and determines the scheme (HTTP/HTTPS).
-- Retrieves geolocation details such as Country, City, ISP, and ASN using `ip-api.com`.
-- Captures screenshots of active domains.
-- Outputs results in a comprehensive Excel file.
+- Extracts WHOIS and NSLOOKUP data for domains using advanced scanning techniques.
+- Checks if a domain is active by verifying HTTP/HTTPS response status.
+- Retrieves geolocation details such as country, city, ISP, ASN, and proxy status using `ip-api.com`.
+- Outputs results in a comprehensive Excel file for easy analysis.
 
 ## Installation
 
-### Dependencies
+### Prerequisites
 Ensure you have the following installed:
+
 - Python 3.6 or higher
 - Required Python libraries:
-  - `openpyxl`
-  - `tldextract`
-  - `requests`
+  - `aiohttp`
+  - `pandas`
+  - `tqdm`
   - `pyfiglet`
   - `termcolor`
 
 To install the dependencies, run:
+
 ```bash
-pip install openpyxl tldextract requests pyfiglet termcolor
+pip install aiohttp pandas tqdm pyfiglet termcolor
 ```
 Installation of pyfiglet sometimes shows error in that case you may try 
 ```bash
 import pyfiglet
 ```
 
-### EyeWitness
-Install EyeWitness for screenshot capture:
+
+### System Dependencies
+Install `whois`, `nslookup` and `gowitness` utilities if not already installed. On a Debian-based system, you can use:
+
 ```bash
-sudo apt install eyewitness
+sudo apt install whois dnsutils gowitness
 ```
 
 ## Usage
 
-- Clone the repository:
+1. **Clone the repository:**
+
 ```bash
 git clone https://github.com/your-username/dlookup-tool.git
 cd dlookup-tool
 ```
 
-- Run the script:
-    - The script will prompt you to enter the folder path where the input Excel file (`cryptodomain.xlsx`) is located.
-    - All output files (results and screenshots) will be saved in the same folder.
-  Command: - 
+2. **Prepare your input file:**
+   - Create an Excel file named `domains.xlsx` with a column named `URLS` containing the list of URLs/domains to analyze.
+
+3. **Run the script:**
+   - Execute the script and provide the folder path where the input Excel file is located.
+
 ```bash
 python3 dlookup.py
 ```
 
-- Input file:
-  - Ensure the inpute file `cyptodomain.xlsx` is present in the folder you specify.
-  - The file `cyptodomain.xlsx` should have heading of url column as "URLS".
+4. **Output:**
+   - The script generates:
+     - An Excel file named `output.xlsx` containing detailed results for all domains.
+     - A text file named `urls.txt` containing a list of clean domains.
 
+## Output Details
+The generated Excel file includes the following columns:
 
-## Output
+| Column            | Description                                      |
+|-------------------|--------------------------------------------------|
+| `URLS`            | The original URL or domain from the input file. |
+| `Domain`          | Cleaned domain (e.g., `example.com`).           |
+| `WHOIS Result`    | WHOIS lookup data for the domain.               |
+| `NSLOOKUP Result` | NSLOOKUP data for the domain.                   |
+| `Server IP`       | IP address retrieved from NSLOOKUP.             |
+| `Domain Active`   | Status (`Yes`/`No`) based on HTTP/HTTPS checks. |
+| `Successful Scheme` | Scheme (`http`/`https`) used for checks.       |
+| `country`         | Country of the server IP.                       |
+| `city`            | City of the server IP.                          |
+| `isp`             | ISP associated with the server IP.              |
+| `asn`             | ASN of the server IP.                           |
+| `PROXY`           | Whether the IP is behind a proxy (`True/False`).|
 
-- Excel File: The tool generates an Excel file (`domain_results.xlsx`) with detailed informations:
-    - `URL, Domain, WHOIS Result, NSLOOKUP Result, Server IP, Domain Active, Successful Scheme, Country, City, ISP, ASN.`
-- Screenshots: Captured screenshots of active domains are saved in the `screens/` directory.
+## Example Workflow
 
-## Configuration
+### Input:
+- Place an Excel file named `domains.xlsx` with the following structure:
 
-- Input File Path: The script dynamically asks for the folder where the input file (`cryptodomain.xlsx`) is located.
+| URLS              |
+|-------------------|
+| http://example.com|
+| https://test.org  |
+| www.sample.net    |
 
-- Output File Path: The script automatically saves:
-    - Results (`domain_results.xlsx` and `urls.txt`) in the same folder as the input file.
-    - Screenshots in a `screens/` directory with the same folder.
+### Output:
+- The script will generate the following files in the same folder as the input file:
+  - `output.xlsx`: Detailed analysis of all domains.
+  - `urls.txt`: Cleaned list of domains.
 
-## Example workflow:
+## Contributing
+We welcome contributions! Feel free to fork the repository, submit pull requests, or open issues for feature requests and bugs.
 
-- Promt:
-    -
-   ```bash
-      Enter the full path of the folder where the domain Excel sheet is located: /home/user/domains
-   ```
-
-- Output:
-  - Results will be saved in `/home/user/domains`:
-      - `domain_results.xlsx`
-      - `urls.txt`
-      - `screens/` (directory containing screenshots of active domains) 
+## License
+This project is licensed under the MIT License. See the `LICENSE` file for details.
