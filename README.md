@@ -96,6 +96,7 @@ The generated Excel file includes the following columns:
 - The script will generate the following files in the same folder as the input file:
   - `output.xlsx`: Detailed analysis of all domains.
   - `urls.txt`: Cleaned list of domains.
+  - `Screenchot`: This folder will be containing the screenshots of the active domains.
 
 ## Contributing
 We welcome contributions! Feel free to fork the repository, submit pull requests, or open issues for feature requests and bugs.
