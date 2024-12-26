@@ -118,9 +118,16 @@ async def process_domains_async(urls):
 async def main():
     display_banner()
 
-    input_file = "/media/sf_Kalisharing/domains.xlsx"
-    output_excel = "/media/sf_Kalisharing/output.xlsx"
-    output_text = "/media/sf_Kalisharing/urls.txt"
+    # Ask user for the folder containing the input Excel file
+    folder_path = input("Enter the full path of the folder where the domains.xlsx file is located: ").strip()
+    input_file = os.path.join(folder_path, "domains.xlsx")
+    output_excel = os.path.join(folder_path, "output.xlsx")
+    output_text = os.path.join(folder_path, "urls.txt")
+
+    # Check if the input file exists
+    if not os.path.isfile(input_file):
+        print(f"Error: File '{input_file}' not found.")
+        return
 
     df = pd.read_excel(input_file)
     urls = df['URLS'].dropna().tolist()
@@ -150,6 +157,8 @@ async def main():
     with open(output_text, "w") as f:
         for result in structured_results:
             f.write(f"{result['Domain']}\n")
+
+    print(f"Results saved to '{output_excel}' and '{output_text}'.")
 
 if __name__ == "__main__":
     asyncio.run(main())
