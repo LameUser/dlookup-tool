@@ -60,10 +60,6 @@ cd dlookup-tool
 python3 dlookup.py
 ```
 
-4. **Output:**
-   - The script generates:
-     - An Excel file named `output.xlsx` containing detailed results for all domains.
-     - A text file named `urls.txt` containing a list of clean domains.
 
 ## Output Details
 The generated Excel file includes the following columns:
@@ -95,10 +91,10 @@ The generated Excel file includes the following columns:
 | www.sample.net    |
 
 ### Output:
-- The script will generate the following files in the same folder as the input file:
-  - `output.xlsx`: Detailed analysis of all domains.
-  - `urls.txt`: Cleaned list of domains.
-  - `Screenshot`: This folder will be containing the screenshots of the active domains.
+   - The script generates:
+     - An Excel file named `output.xlsx` containing detailed results for all domains.
+     - A text file named `urls.txt` containing a list of clean domains.
+     - A folder name `screenshots` containing all the screenshots of active domains.
 
 ## Contributing
 We welcome contributions! Feel free to fork the repository, submit pull requests, or open issues for feature requests and bugs.
