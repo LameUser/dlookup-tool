@@ -1,6 +1,5 @@
 # dlookup Tool
 
-![dlookup Banner](banner.png)
 
 `dlookup` is a Python-based tool designed to analyze domains and IPs, providing WHOIS, NSLOOKUP, geolocation data, and domain activity status. It outputs the results in an Excel file, making it a powerful utility for network analysts, security researchers, and developers.
 
