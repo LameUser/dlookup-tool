@@ -119,7 +119,7 @@ async def main():
     display_banner()
 
     # Ask user for the folder containing the input Excel file
-    folder_path = input("Enter the full path of the folder where the domains.xlsx file is located: ").strip()
+    folder_path = input("\nEnter the full path of the folder where the domains.xlsx file is located: ").strip()
     input_file = os.path.join(folder_path, "domains.xlsx")
     output_excel = os.path.join(folder_path, "output.xlsx")
     output_text = os.path.join(folder_path, "urls.txt")
