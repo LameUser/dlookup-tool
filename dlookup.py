@@ -160,5 +160,16 @@ async def main():
 
     print(f"Results saved to '{output_excel}' and '{output_text}'.")
 
+    # Wait for 3 seconds before running gowitness
+    await asyncio.sleep(3)
+
+    # Run gowitness to take screenshots
+    gowitness_command = f"gowitness scan file -f {output_text}"
+    try:
+        subprocess.run(gowitness_command, shell=True, check=True)
+        print("Screenshots captured successfully using gowitness.")
+    except subprocess.CalledProcessError as e:
+        print(f"Error running gowitness: {e}")
+
 if __name__ == "__main__":
     asyncio.run(main())
