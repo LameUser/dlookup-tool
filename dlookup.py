@@ -25,6 +25,82 @@ def clean_domain(url):
         domain = '.'.join(domain_parts)
     return domain
 
+def run_command_with_retries(command, retries=2):
+    """Run a shell command with retries if it fails."""
+    for attempt in range(retries + 1):
+        try:
+            result = subprocess.getoutput(command)
+            if result:
+                return result
+        except Exception:
+            if attempt >= retries:
+                return "Command failed"
+
+def run_whois_command(domain):
+    """Run the whois command with retries, trying a different command if the first fails."""
+    whois_command_1 = f"whois {domain}"
+    whois_command_2 = f"whois -I {domain}"
+    
+    result = run_command_with_retries(whois_command_1)
+    if "Temporary failure in name resolution" in result or "host unreachable" in result or "timed out" in result or "no servers could be reached" in result or "reset" in result.lower():
+        # Try the second whois command if the first failed
+        result = run_command_with_retries(whois_command_2)
+    
+    return result
+
+def validate_result(result, command_type):
+    """Check for common errors in WHOIS and NSLOOKUP results."""
+    if "Temporary failure in name resolution" in result or "host unreachable" in result or "timed out" in result or "no servers could be reached" in result:
+        return f"{command_type} Error: {result.splitlines()[0]}"
+    return result
+
+def extract_registrar_details(whois_result):
+    """Extract registrar details from WHOIS result."""
+    details = {}
+    try:
+        details['Registry Domain ID'] = re.search(r"Registry Domain ID:\s*(.+)", whois_result).group(1)
+        details['Registrar WHOIS Server'] = re.search(r"Registrar WHOIS Server:\s*(.+)", whois_result).group(1)
+        details['Registrar URL'] = re.search(r"Registrar URL:\s*(.+)", whois_result).group(1)
+        details['Updated Date'] = re.search(r"Updated Date:\s*(.+)", whois_result).group(1)
+        details['Creation Date'] = re.search(r"Creation Date:\s*(.+)", whois_result).group(1)
+        details['Registry Expiry Date'] = re.search(r"Registry Expiry Date:\s*(.+)", whois_result).group(1)
+        details['Registrar'] = re.search(r"Registrar:\s*(.+)", whois_result).group(1)
+        details['Registrar IANA ID'] = re.search(r"Registrar IANA ID:\s*(.+)", whois_result).group(1)
+    except AttributeError:
+        pass  # Ignore if fields are missing
+    return details
+
+def process_domain_sync(url):
+    try:
+        domain = clean_domain(url)
+        # Use WHOIS command with retries
+        whois_result = run_whois_command(domain)
+        whois_result = validate_result(whois_result, "WHOIS")
+
+        # Extract registrar details
+        registrar_details = extract_registrar_details(whois_result)
+
+        # NSLOOKUP command
+        nslookup_result = run_command_with_retries(f"nslookup {domain}")
+        nslookup_result = validate_result(nslookup_result, "NSLOOKUP")
+
+        server_ip = None
+        for line in nslookup_result.splitlines():
+            if "Address:" in line:
+                server_ip = line.split("Address:")[-1].strip()
+
+        return {
+            "URLS": url,
+            "Domain": domain,
+            "WHOIS Result": whois_result,
+            "Registrar Details": registrar_details,
+            "NSLOOKUP Result": nslookup_result,
+            "Server IP": server_ip if server_ip else "No IP Found",
+        }
+    except Exception as e:
+        print(f"Error processing domain {url}: {e}")
+        return None
+
 async def get_ip_info(ip, session):
     """Get detailed IP information including proxy status."""
     url = f"http://ip-api.com/json/{ip}"
@@ -40,58 +116,16 @@ async def get_ip_info(ip, session):
                     "asn": data.get("as", "Unknown")
                 }
             return {"proxy": False, "country": "Unknown", "city": "Unknown", "isp": "Unknown", "asn": "Unknown"}
-    except Exception:
+    except Exception as e:
+        print(f"Error getting IP info for {ip}: {e}")
         return {"proxy": False, "country": "Unknown", "city": "Unknown", "isp": "Unknown", "asn": "Unknown"}
-
-def run_command_with_retries(command, retries=2):
-    """Run a shell command with retries if it fails."""
-    for attempt in range(retries + 1):
-        try:
-            result = subprocess.getoutput(command)
-            if result:
-                return result
-        except Exception:
-            if attempt >= retries:
-                return "Command failed"
-
-def validate_result(result, command_type):
-    """Check for common errors in WHOIS and NSLOOKUP results."""
-    if "Temporary failure in name resolution" in result or "host unreachable" in result or "timed out" in result or "no servers could be reached" in result:
-        return f"{command_type} Error: {result.splitlines()[0]}"
-    return result
-
-def process_domain_sync(url):
-    try:
-        domain = clean_domain(url)
-        # Use WHOIS command with maximum detail
-        whois_result = run_command_with_retries(f"whois -I {domain}")
-        whois_result = validate_result(whois_result, "WHOIS")
-
-        # NSLOOKUP command
-        nslookup_result = run_command_with_retries(f"nslookup {domain}")
-        nslookup_result = validate_result(nslookup_result, "NSLOOKUP")
-
-        server_ip = None
-        for line in nslookup_result.splitlines():
-            if "Address:" in line:
-                server_ip = line.split("Address:")[-1].strip()
-
-        return {
-            "URLS": url,
-            "Domain": domain,
-            "WHOIS Result": whois_result,
-            "NSLOOKUP Result": nslookup_result,
-            "Server IP": server_ip if server_ip else "No IP Found",
-        }
-    except Exception:
-        return None
 
 async def process_domains_async(urls):
     async with aiohttp.ClientSession() as session:
         tasks = []
         results = []
         loop = asyncio.get_event_loop()
-        
+
         with ThreadPoolExecutor(max_workers=30) as executor:
             for url in urls:
                 tasks.append(loop.run_in_executor(executor, process_domain_sync, url))
@@ -110,7 +144,8 @@ async def process_domains_async(urls):
                         result["isp"] = ip_info["isp"]
                         result["asn"] = ip_info["asn"]
                         results.append(result)
-                except Exception:
+                except Exception as e:
+                    print(f"Error processing result: {e}")
                     continue
 
         return results
@@ -136,10 +171,18 @@ async def main():
 
     structured_results = []
     for result in results:
+        registrar_details = result["Registrar Details"]
         structured_results.append({
             "URLS": result["URLS"],
             "Domain": result["Domain"],
             "WHOIS Result": result["WHOIS Result"],
+            "Registrar": registrar_details.get("Registrar", "Unknown"),
+            "Registrar WHOIS Server": registrar_details.get("Registrar WHOIS Server", "Unknown"),
+            "Registrar URL": registrar_details.get("Registrar URL", "Unknown"),
+            "Updated Date": registrar_details.get("Updated Date", "Unknown"),
+            "Creation Date": registrar_details.get("Creation Date", "Unknown"),
+            "Registry Expiry Date": registrar_details.get("Registry Expiry Date", "Unknown"),
+            "Registrar IANA ID": registrar_details.get("Registrar IANA ID", "Unknown"),
             "NSLOOKUP Result": result["NSLOOKUP Result"],
             "Server IP": result["Server IP"],
             "Domain Active": "Yes" if result["Server IP"] != "No IP Found" and "200" in result["WHOIS Result"] else "No",
@@ -160,16 +203,20 @@ async def main():
 
     print(f"Results saved to '{output_excel}' and '{output_text}'.")
 
-    # Wait for 3 seconds before running gowitness
-    await asyncio.sleep(3)
+    # Ask the user if they want to take screenshots using gowitness
+    take_screenshots = input("Do you want to take screenshots of the domains using gowitness? (yes/no): ").strip().lower()
 
-    # Run gowitness to take screenshots
-    gowitness_command = f"gowitness scan file -f {output_text}"
-    try:
-        subprocess.run(gowitness_command, shell=True, check=True)
-        print("Screenshots captured successfully using gowitness.")
-    except subprocess.CalledProcessError as e:
-        print(f"Error running gowitness: {e}")
+    if take_screenshots == 'yes':
+        # Wait for 3 seconds before running gowitness
+        await asyncio.sleep(3)
+
+        # Run gowitness to take screenshots
+        gowitness_command = f"gowitness scan file -f {output_text}"
+        try:
+            subprocess.run(gowitness_command, shell=True, check=True)
+            print("Screenshots captured successfully using gowitness.")
+        except subprocess.CalledProcessError as e:
+            print(f"Error running gowitness: {e}")
 
 if __name__ == "__main__":
     asyncio.run(main())
