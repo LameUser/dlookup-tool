@@ -8,6 +8,7 @@ from tqdm import tqdm
 import pyfiglet
 from termcolor import colored
 import re
+import time  # Import time module to use sleep function
 
 def display_banner():
     """Display the tool banner with the name and GitHub link."""
@@ -38,8 +39,8 @@ def run_command_with_retries(command, retries=2):
 
 def run_whois_command(domain):
     """Run the whois command with retries, trying a different command if the first fails."""
-    whois_command_1 = f"whois {domain}"
-    whois_command_2 = f"whois -I {domain}"
+    whois_command_1 = f"whois -I {domain}"
+    whois_command_2 = f"whois {domain}"
     
     result = run_command_with_retries(whois_command_1)
     if "Temporary failure in name resolution" in result or "host unreachable" in result or "timed out" in result or "no servers could be reached" in result or "reset" in result.lower():
@@ -70,7 +71,11 @@ def extract_registrar_details(whois_result):
         pass  # Ignore if fields are missing
     return details
 
-def process_domain_sync(url):
+def process_domain_sync(url, counter):
+    if counter % 500 == 0 and counter != 0:
+        print("Pausing for 10 seconds to avoid connection resets...")
+        time.sleep(10)
+
     try:
         domain = clean_domain(url)
         # Use WHOIS command with retries
@@ -125,10 +130,12 @@ async def process_domains_async(urls):
         tasks = []
         results = []
         loop = asyncio.get_event_loop()
+        counter = 0  # Initialize counter
 
         with ThreadPoolExecutor(max_workers=30) as executor:
             for url in urls:
-                tasks.append(loop.run_in_executor(executor, process_domain_sync, url))
+                tasks.append(loop.run_in_executor(executor, process_domain_sync, url, counter))
+                counter += 1  # Increment counter after each domain
 
             for sync_result in tqdm(asyncio.as_completed(tasks), total=len(tasks), desc="Domain Processing", unit="url"):
                 try:
