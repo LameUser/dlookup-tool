@@ -9,6 +9,7 @@
 - Checks if a domain is active by verifying HTTP/HTTPS response status.
 - Retrieves geolocation details such as country, city, ISP, ASN, and proxy status using `ip-api.com`.
 - Outputs results in a comprehensive Excel file for easy analysis.
+- Asks the User if screenshots of active domains are required or not.
 
 ## Installation
 
