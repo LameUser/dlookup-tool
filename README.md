@@ -27,7 +27,7 @@ Ensure you have the following installed:
 To install the dependencies, run:
 
 ```bash
-pip install aiohttp pandas tqdm pyfiglet termcolor
+pip install pandas aiohttp tqdm pyfiglet termcolor aiofiles
 ```
 Installation of pyfiglet sometimes shows error in that case you may try 
 ```bash
