@@ -36,10 +36,10 @@ import pyfiglet
 
 
 ### System Dependencies
-Install `whois`, `nslookup` and `gowitness` utilities if not already installed. On a Debian-based system, you can use:
+Install `whois`, `nslookup` and `eyewitness` utilities if not already installed. On a Debian-based system, you can use:
 
 ```bash
-sudo apt install whois dnsutils gowitness
+sudo apt install whois dnsutils eyewitness
 ```
 
 ## Usage
