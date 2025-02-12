@@ -23,6 +23,7 @@ Ensure you have the following installed:
   - `tqdm`
   - `pyfiglet`
   - `termcolor`
+  - `openpyxl`
 
 To install the dependencies, run:
 
