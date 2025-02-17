@@ -9,6 +9,7 @@ import pyfiglet
 from termcolor import colored
 import re
 import time
+import json
 
 def display_banner():
     """Display the tool banner with styling."""
@@ -17,12 +18,29 @@ def display_banner():
     print(colored("https://github.com/LameUser", "yellow"))
 
 def clean_domain(url):
-    """Enhanced domain cleaning with URL validation."""
+    """
+    Enhanced domain cleaning with URL validation.
+    Identifies if the input is an IP address (IPv4 or IPv6) or a URL.
+    If it's a URL, it cleans it; if it's an IP address, it returns it as-is.
+    """
     try:
         # Remove protocol and path
         url = url.split('//')[-1].split('/')[0].lower().strip()
+        
+        # Check if the input is an IPv4 address
+        ipv4_pattern = re.compile(r"^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$")
+        if ipv4_pattern.match(url):
+            return url  # Return the IPv4 address as-is
+        
+        # Check if the input is an IPv6 address
+        ipv6_pattern = re.compile(r"^(?:[A-F0-9]{1,4}:){7}[A-F0-9]{1,4}$", re.IGNORECASE)
+        if ipv6_pattern.match(url):
+            return url  # Return the IPv6 address as-is
+        
+        # If it's not an IP address, assume it's a URL and clean it
         # Remove port if present
         domain = url.split(':')[0]
+        
         # Handle subdomains and TLDs
         parts = domain.split('.')
         if len(parts) > 2:
@@ -31,7 +49,8 @@ def clean_domain(url):
                 return '.'.join(parts[-3:])
             return '.'.join(parts[-2:])
         return domain
-    except:
+    except Exception as e:
+        print(f"Error cleaning domain {url}: {str(e)}")
         return url
 
 async def run_async_command(command):
@@ -80,6 +99,36 @@ def extract_registrar_details(whois_result):
                   if re.search(pattern, whois_result) else "Not Found") 
             for key, pattern in details.items()}
 
+async def get_ip_from_domain(domain):
+    """Ping the domain to resolve its IP address."""
+    try:
+        # Use ping command to resolve the IP address
+        ping_result = await run_async_command(f"ping -c 1 {domain}")
+        ip_match = re.search(r"PING\s[\w\.-]+\s\(([\d\.]+)\)", ping_result)
+        if ip_match:
+            return ip_match.group(1)
+        return "No IP Found"
+    except Exception as e:
+        print(f"Error resolving IP for {domain}: {str(e)}")
+        return "No IP Found"
+
+async def get_ip_info(ip):
+    """Fetch IP information using ipinfo.io."""
+    url = f"https://ipinfo.io/{ip}/json"
+    async with aiohttp.ClientSession() as session:
+        try:
+            async with session.get(url, timeout=10) as resp:
+                if resp.status == 200:
+                    data = await resp.json()
+                    return {
+                        "Organisation": data.get("org", "Unknown"),
+                        "Country": data.get("country", "Unknown"),
+                        "City": data.get("city", "Unknown")
+                    }
+        except Exception as e:
+            print(f"Error fetching IP info for {ip}: {str(e)}")
+            return {"Organisation": "Unknown", "Country": "Unknown", "City": "Unknown"}
+
 async def process_domain(url, counter, sem):
     """Domain processing with enhanced error handling."""
     async with sem:
@@ -91,59 +140,38 @@ async def process_domain(url, counter, sem):
             whois_result = await get_whois_info(domain)
             registrar_details = extract_registrar_details(whois_result)
             
-            # Get DNS information
-            nslookup = await run_async_command(f"nslookup {domain}")
-            server_ip = next((line.split("Address:")[-1].strip() 
-                            for line in nslookup.splitlines() 
-                            if "Address:" in line), "No IP Found")
-
+            # Resolve IP address
+            if domain != url:  # If it's a domain, resolve IP
+                ip = await get_ip_from_domain(domain)
+            else:  # If it's already an IP, use it directly
+                ip = domain
+            
+            # Fetch IP info
+            ip_info = await get_ip_info(ip)
+            
             return {
                 "URLS": url,
                 "Domain": domain,
                 "WHOIS Result": whois_result,
                 **registrar_details,
-                "NSLOOKUP Result": nslookup,
-                "Server IP": server_ip
+                "Server IP": ip,
+                **ip_info
             }
         except Exception as e:
             print(f"Error processing {url}: {str(e)}")
             return None
 
-async def get_ip_info(ip, session):
-    """IP information with retries."""
-    url = f"http://ip-api.com/json/{ip}"
-    for attempt in range(3):
-        try:
-            async with session.get(url, timeout=10) as resp:
-                if resp.status == 200:
-                    data = await resp.json()
-                    return {
-                        "country": data.get("country", "Unknown"),
-                        "city": data.get("city", "Unknown"),
-                        "isp": data.get("isp", "Unknown"),
-                        "asn": data.get("as", "Unknown"),
-                        "proxy": data.get("proxy", False)
-                    }
-                await asyncio.sleep(2 ** attempt)
-        except:
-            await asyncio.sleep(1)
-    return {"country": "Unknown", "city": "Unknown", "isp": "Unknown", "asn": "Unknown", "proxy": False}
-
 async def process_domains(urls):
     """Main processing pipeline."""
     sem = asyncio.Semaphore(15)  # Control concurrency
-    async with aiohttp.ClientSession() as session:
-        tasks = [process_domain(url, i, sem) for i, url in enumerate(urls)]
-        results = []
-        
-        for future in tqdm(asyncio.as_completed(tasks), total=len(urls), desc="Processing Domains"):
-            result = await future
-            if result:
-                if result["Server IP"] != "No IP Found":
-                    ip_info = await get_ip_info(result["Server IP"], session)
-                    result.update(ip_info)
-                results.append(result)
-        return results
+    tasks = [process_domain(url, i, sem) for i, url in enumerate(urls)]
+    results = []
+    
+    for future in tqdm(asyncio.as_completed(tasks), total=len(urls), desc="Processing Domains"):
+        result = await future
+        if result:
+            results.append(result)
+    return results
 
 def save_outputs(results, folder):
     """Save all output files with proper formatting."""
@@ -155,10 +183,9 @@ def save_outputs(results, folder):
         "Creation Date": r["Creation Date"],
         "Expiry Date": r["Registry Expiry Date"],
         "Server IP": r["Server IP"],
-        "Country": r.get("country", "Unknown"),
-        "ISP": r.get("isp", "Unknown"),
-        "ASN": r.get("asn", "Unknown"),
-        "Proxy": r.get("proxy", False),
+        "Organisation": r.get("Organisation", "Unknown"),
+        "Country": r.get("Country", "Unknown"),
+        "City": r.get("City", "Unknown"),
         "Active": "Yes" if r["Server IP"] != "No IP Found" else "No"
     } for r in results])
     
@@ -172,30 +199,24 @@ def save_outputs(results, folder):
     
     return excel_path, txt_path
 
-async def capture_screenshots(urls_file, folder):
-    """Run eyewitness with proper configuration."""
-    screenshots_dir = os.path.join(folder, "screenshots")
-    os.makedirs(screenshots_dir, exist_ok=True)
-    
-    cmd = f"eyewitness --web -f {urls_file} --threads 8 -d {screenshots_dir} --no-prompt"
-    try:
-        proc = await asyncio.create_subprocess_shell(cmd)
-        await proc.communicate()
-        return True
-    except Exception as e:
-        print(f"Screenshot error: {str(e)}")
-        return False
-
 async def main():
     display_banner()
     
     folder = input("\nEnter working directory path: ").strip()
+    
+    # Check if the provided path is a valid directory
     if not os.path.isdir(folder):
-        print("Invalid directory!")
+        print(f"Invalid directory: {folder}")
+        return
+    
+    # Check if domains.xlsx exists in the directory
+    domains_file = os.path.join(folder, "domains.xlsx")
+    if not os.path.isfile(domains_file):
+        print(f"Error: 'domains.xlsx' not found in {folder}")
         return
     
     try:
-        df = pd.read_excel(os.path.join(folder, "domains.xlsx"))
+        df = pd.read_excel(domains_file)
         urls = df['URLS'].dropna().unique().tolist()
     except Exception as e:
         print(f"Input error: {str(e)}")
