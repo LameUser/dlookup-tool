@@ -26,7 +26,8 @@
    ```bash
    git clone https://github.com/LameUser/dlookup-tool.git
    cd dlookup-tool
-
+   ```
+   
 2. Install the required Python packages:
   ```bash
   pip install -r requirements.txt
@@ -35,7 +36,8 @@
 3. Ensure ping and whois are installed on your system. On most Linux distributions, these are pre-installed. If not, install them using:
    ```bash
    sudo apt-get install iputils-ping whois
-
+   ```
+   
 4. (Optional) Install `eyewitness` for screenshot functionality:
    ```bash
    git clone https://github.com/FortyNorthSecurity/EyeWitness.git
@@ -58,7 +60,8 @@
 3. Run the script:
    ```bash
    python dlookup.py
-
+   ```
+   
 4. When prompted, enter the path to the directory containing `domains.xlsx`. For example:
   ```bash
   Enter working directory path: /home/user/dlookup-tool/
@@ -123,12 +126,6 @@ If you choose to capture screenshots, the tool will use `eyewitness` to take scr
 ## Contributing
 
 Contributions are welcome! If you find any issues or have suggestions for improvements, please open an issue or submit a pull request.
-
----
-
-## License
-
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
 ---
 
