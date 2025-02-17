@@ -30,7 +30,7 @@
    
 2. Install the required Python packages:
   ```bash
-     pip install -r requirements.txt
+   pip install -r requirements.txt
   ```
 
 3. Ensure ping and whois are installed on your system. On most Linux distributions, these are pre-installed. If not, install them using:
