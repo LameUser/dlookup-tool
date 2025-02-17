@@ -1,0 +1,6 @@
+# Python dependencies for dlookup-tool
+pandas>=2.0.0          # For handling Excel files and dataframes
+aiohttp>=3.8.0         # For making asynchronous HTTP requests
+tqdm>=4.65.0           # For displaying progress bars
+pyfiglet>=0.8.post1    # For creating the tool banner
+termcolor>=2.3.0       # For colored terminal output
